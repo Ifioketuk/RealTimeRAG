@@ -146,7 +146,7 @@ authenticator = stauth.Authenticate(
 )
 
 # Login form
-name, authentication_status, username = authenticator.login('Login', 'main')
+name, authentication_status, username = authenticator.login('main')
 
 # Check authentication status
 if authentication_status:
