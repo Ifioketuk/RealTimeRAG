@@ -145,8 +145,10 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-# Login form
-name, authentication_status, username = authenticator.login('main')
+if 'authenticator' not in st.session_state:
+    st.session_state['authenticator'] = authenticator
+
+authenticator.login('main')
 
 # Check authentication status
 if authentication_status:
