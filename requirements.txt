@@ -60,7 +60,7 @@ rpds-py==0.23.1
 s3transfer==0.11.2
 six==1.17.0
 smmap==5.0.2
-sounddevice==0.5.1
+streamlit_webrtc
 streamlit==1.42.2
 streamlit-authenticator==0.4.1
 tenacity==9.0.0
