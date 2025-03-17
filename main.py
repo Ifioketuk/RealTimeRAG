@@ -90,6 +90,11 @@ async def basic_transcribe():
         await handler.final_flush()
         await stream.input_stream.end_stream()
 
+@app.get("/")
+async def root():
+    return {"message": "FastAPI server is running!"}
+
+
 @app.post("/transcribe/start")
 async def start_transcription(background_tasks: BackgroundTasks):
     background_tasks.add_task(basic_transcribe)  # ✅ CORRECT WAY TO RUN ASYNC TASK
