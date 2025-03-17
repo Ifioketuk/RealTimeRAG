@@ -12,7 +12,7 @@ import time
 import threading
 
 # Import our custom audio recorder component
-from audio_recorder import audio_recorder
+from audio-recorder-component import audio_recorder
 
 load_dotenv()
 
