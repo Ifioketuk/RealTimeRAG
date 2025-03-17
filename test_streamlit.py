@@ -2,6 +2,11 @@ import os
 import boto3
 import json
 import streamlit as st
+
+# App title
+st.set_page_config(page_title="Yharn App", layout="wide")
+
+
 import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
@@ -126,8 +131,7 @@ def get_answer_from_event(question):
     except Exception as e:
         return f"Error generating answer: {str(e)}"
 
-# App title
-st.set_page_config(page_title="Yharn App", layout="wide")
+
 
 # Load configuration
 with open('config.yaml') as file:
