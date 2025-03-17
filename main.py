@@ -107,8 +107,7 @@ async def basic_transcribe():
         await handler.final_flush()
         await stream.input_stream.end_stream()
 
-# Streamlit UI
-st.title("Real-Time Speech Transcription with WebRTC")
+
 
 webrtc_ctx = webrtc_streamer(
     key="audio-only",
