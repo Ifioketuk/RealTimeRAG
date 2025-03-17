@@ -16,6 +16,7 @@ RTC_CONFIGURATION = RTCConfiguration(
 
 # Queue for audio frames
 audio_queue = queue.Queue()
+semaphore = Semaphore(1)  # Prevent multiple transcriptions at once
 
 class MyEventHandler(TranscriptResultStreamHandler):
     def __init__(self, output_stream):
@@ -82,33 +83,46 @@ def audio_callback(frame):
 
 async def write_chunks(stream):
     """Continuously sends audio chunks to AWS Transcribe"""
-    while True:
+    while st.session_state["transcription_running"]:
         if not audio_queue.empty():
             chunk = audio_queue.get()
             await stream.input_stream.send_audio_event(audio_chunk=chunk)
-    await stream.input_stream.end_stream()
+        await asyncio.sleep(0.1)  # Avoid tight loop
+
+    await stream.input_stream.end_stream()  # Stop stream when stopped
 
 async def basic_transcribe():
-    """Handles real-time transcription"""
-    client = TranscribeStreamingClient(region="us-east-1")
-    stream = await client.start_stream_transcription(
-        language_code="en-US",
-        media_sample_rate_hz=16000,
-        media_encoding="pcm"
-    )
-    handler = MyEventHandler(stream.output_stream)
+    """Handles real-time transcription with start/stop functionality."""
+    if "transcription_running" not in st.session_state:
+        st.session_state["transcription_running"] = False  # Default state
 
-    try:
-        await asyncio.gather(
-            write_chunks(stream),
-            handler.handle_events(),
+    async with semaphore:  # Prevent multiple transcriptions
+        client = TranscribeStreamingClient(region="us-east-1")
+        stream = await client.start_stream_transcription(
+            language_code="en-US",
+            media_sample_rate_hz=16000,
+            media_encoding="pcm"
         )
-    finally:
-        await handler.final_flush()
-        await stream.input_stream.end_stream()
+        handler = MyEventHandler(stream.output_stream)
 
+        try:
+            transcription_task = asyncio.create_task(write_chunks(stream))
+            event_task = asyncio.create_task(handler.handle_events())
 
+            while st.session_state["transcription_running"]:
+                await asyncio.sleep(0.1)  # Check stop flag periodically
 
+            transcription_task.cancel()
+            event_task.cancel()
+
+        except asyncio.CancelledError:
+            pass  # Prevents errors when canceling tasks
+
+        finally:
+            await handler.final_flush()  # Save transcript to DB
+            await stream.input_stream.end_stream()  # Close stream
+
+# WebRTC Streamer
 webrtc_ctx = webrtc_streamer(
     key="audio-only",
     mode=WebRtcMode.SENDRECV,
@@ -118,6 +132,10 @@ webrtc_ctx = webrtc_streamer(
     media_stream_constraints={"video": False, "audio": True},
 )
 
-if webrtc_ctx.audio_receiver:
-    st.write("Receiving audio stream...")
-    asyncio.run(basic_transcribe())  # Start transcription
+# UI Buttons to start/stop transcription
+if st.button("Start Transcription"):
+    st.session_state["transcription_running"] = True
+    asyncio.create_task(basic_transcribe())
+
+if st.button("Stop Transcription"):
+    st.session_state["transcription_running"] = False
