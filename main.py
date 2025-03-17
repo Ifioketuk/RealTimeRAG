@@ -97,7 +97,8 @@ async def root():
 
 @app.post("/transcribe/start")
 async def start_transcription(background_tasks: BackgroundTasks):
-    background_tasks.add_task(basic_transcribe)  # ✅ CORRECT WAY TO RUN ASYNC TASK
+    loop = asyncio.get_event_loop()
+    loop.create_task(basic_transcribe())  # Schedule transcription task
     return {"message": "Transcription started"}
 
 # ✅ Ensure FastAPI runs on Render's required port
