@@ -150,53 +150,42 @@ if 'authenticator' not in st.session_state:
 
 authenticator.login('main')
 
-# Check authentication status
-if authentication_status:
-    # Oracle user - Chat interface
-    if username == 'oracle':
+if st.session_state.get("authentication_status"):
+    if st.session_state["name"] == 'oracle':
         st.title("Yharn Chat 🤖")
-        st.sidebar.title(f"Welcome, {name}")
-        
-        # Initialize chat history
+
         if "messages" not in st.session_state:
             st.session_state.messages = []
-            # Add initial greeting
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": "Hello! How can I assist you with the event today?"
-            })
-        
-        # Display chat messages
+
+        if len(st.session_state.messages) == 0:
+            assistant_message = "Hello! How can I assist you with the event today?"
+            st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
-        
-        # Chat input
+
         if user_input := st.chat_input("Type your message here..."):
-            # Add user message to chat history
             st.session_state.messages.append({"role": "user", "content": user_input})
-            
-            # Display user message
             with st.chat_message("user"):
                 st.markdown(user_input)
-            
-            # Generate and display response
+
+            with st.spinner("Generating response..."):
+                assistant_response = get_answer_from_event(user_input)
+
             with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    assistant_response = get_answer_from_event(user_input)
-                    st.markdown(assistant_response)
-            
-            # Add assistant response to chat history
+                st.markdown(assistant_response)
             st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-        
-        # Logout button
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
         with st.sidebar:
-            if authenticator.logout('Logout', 'sidebar'):
+            if authenticator.logout('Logout', 'main'):
                 st.session_state.clear()
-                st.experimental_rerun()
-    
+                st.write("You have logged out successfully!")
+                st.stop()
     # YK user - Transcription interface
-    elif username == 'yk':
+     elif st.session_state["name"] == 'yk':
         st.title("Welcome to Yharn Transcribe 🎙️")
         st.sidebar.title(f"Welcome, {name}")
         
