@@ -145,6 +145,9 @@ if st.session_state.get("authentication_status"):
         st.title("Welcome to Yharn Transcribe 🎙️")
         st.write("Click 'Start' to begin real-time transcription.")
 
+        if "transcription_text" not in st.session_state:
+            st.session_state.transcription_text = ""
+
         RTC_CONFIGURATION = RTCConfiguration(
             {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
         )
@@ -156,16 +159,22 @@ if st.session_state.get("authentication_status"):
             media_stream_constraints={"video": False, "audio": True},
         )
 
-        if webrtc_ctx.audio_receiver:
-            st.write("🟢 Transcription started!")
-            asyncio.run(basic_transcribe())  # Run transcription in real-time
+        if st.button("Start Transcription"):
+            st.session_state.transcription_text = ""  # Reset text
+            st.session_state.transcription_running = True
+            asyncio.create_task(basic_transcribe())
+
+        if st.button("Stop Transcription"):
+            st.session_state.transcription_running = False
+
+        st.text_area("Live Transcription", value=st.session_state.transcription_text, height=200)
 
         with st.sidebar:
             if authenticator.logout('Logout', 'main'):
                 st.session_state.clear()
                 st.write("You have logged out successfully!")
                 st.stop()
-
+    
     else:
         st.write(f"Welcome {st.session_state['name']}!")
         authenticator.logout('Logout', 'main')
