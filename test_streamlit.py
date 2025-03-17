@@ -162,7 +162,9 @@ if st.session_state.get("authentication_status"):
         if st.button("Start Transcription"):
             st.session_state.transcription_text = ""  # Reset text
             st.session_state.transcription_running = True
-            asyncio.create_task(basic_transcribe())
+        
+            # Start transcription in a new thread-safe loop
+            asyncio.run(basic_transcribe())  # ✅ Ensures a proper event loop is created
 
         if st.button("Stop Transcription"):
             st.session_state.transcription_running = False
