@@ -8,8 +8,8 @@ import yaml
 from yaml.loader import SafeLoader
 from dotenv import load_dotenv
 from pinecone import Pinecone
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
-from main import basic_transcribe  # Import real-time transcription function
+import requests
+import time
 
 load_dotenv()
 
@@ -19,6 +19,7 @@ modelId = os.getenv("MODEL_ID")
 emb_modelId = os.getenv("EMB_MODEL_ID")
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 index_name = os.getenv("PINECONE_INDEX_NAME")
+fastapi_url = os.getenv("FASTAPI_URL", "http://localhost:8000")  # URL for FastAPI backend
 
 # Create session and clients
 bedrock = boto3.client(service_name='bedrock-runtime', region_name="us-east-1")
@@ -31,62 +32,28 @@ def init_pinecone():
 # Initialize the Pinecone index
 index = init_pinecone()
 
-prompt_template = """ 
-You are an AI assistant with access to knowledge about any event or conversation. You respond to the user question as if you have the event or conversation in your knowledge base.
+def start_transcription():
+    response = requests.post(f"{fastapi_url}/start_transcription")
+    if response.status_code == 200:
+        st.session_state.transcribing = True
 
-Your Responsibilities: 
-1. Answer questions about the event by using relevant information retrieved. 
-2. Your responses should be conversational, clear, and use simple grammar to ensure easy understanding. 
-3. If specific information is not in the transcript, let the user know politely.
-4. Be affirming with your responses. For example:
-    Never use "seems" in your responses like: "It seems like the last point made was about funding."
-    Instead, say: "The last point made was about funding."
+def stop_transcription():
+    response = requests.post(f"{fastapi_url}/stop_transcription")
+    if response.status_code == 200:
+        st.session_state.transcribing = False
 
-<context>
-{context}
-</context>
+def get_transcription():
+    response = requests.get(f"{fastapi_url}/get_transcription")
+    if response.status_code == 200:
+        return response.json().get("transcription", "")
+    return ""
 
-Question: {question}
-
-Helpful Answer:
-"""
-
-def get_answer_from_event(query):
-    input_data = {
-        "inputText": query,
-        "dimensions": 1024,
-        "normalize": True
-    }
-
-    body = json.dumps(input_data).encode('utf-8')
-    response = bedrock.invoke_model(
-        modelId=emb_modelId,
-        contentType="application/json",
-        accept="*/*",
-        body=body
-    )
-
-    response_body = response['body'].read()
-    response_json = json.loads(response_body)
-    query_embedding = response_json['embedding']
-
-    result = index.query(vector=query_embedding, top_k=3, include_metadata=True)
-
-    context = [f"Score: {match['score']}, Metadata: {match['metadata']}" for match in result['matches']]
-    context_string = "\n".join(context)
-    
-    message_list = [{"role": "user", "content": [{"text": query}]}]
-    response = bedrock.converse(
-        modelId=modelId,
-        messages=message_list,
-        system=[
-            {"text": prompt_template.format(context=context_string, question=query)},
-        ],
-        inferenceConfig={"maxTokens": 2000, "temperature": 1},
-    )
-    
-    response_message = response['output']['message']['content'][0]['text']
-    return response_message
+def transcription_loop():
+    while st.session_state.transcribing:
+        text = get_transcription()
+        if text:
+            st.session_state.transcription_text += text + " "
+        time.sleep(1)
 
 # Load configuration
 with open('config.yaml') as file:
@@ -148,35 +115,29 @@ if st.session_state.get("authentication_status"):
         if "transcription_text" not in st.session_state:
             st.session_state.transcription_text = ""
 
-        RTC_CONFIGURATION = RTCConfiguration(
-            {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-        )
+        if "transcribing" not in st.session_state:
+            st.session_state.transcribing = False
 
-        webrtc_ctx = webrtc_streamer(
-            key="audio-only",
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration=RTC_CONFIGURATION,
-            media_stream_constraints={"video": False, "audio": True},
-        )
-
-        if st.button("Start Transcription"):
-            st.session_state.transcription_text = ""  # Reset text
-            st.session_state.transcription_running = True
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Start Transcription"):
+                start_transcription()
+                st.session_state.transcription_text = ""
+                st.session_state.transcribing = True
+                asyncio.create_task(transcription_loop())
         
-            # Start transcription in a new thread-safe loop
-            asyncio.run(basic_transcribe())  # ✅ Ensures a proper event loop is created
+        with col2:
+            if st.button("Stop Transcription"):
+                stop_transcription()
 
-        if st.button("Stop Transcription"):
-            st.session_state.transcription_running = False
-
-        st.text_area("Live Transcription", value=st.session_state.transcription_text, height=200)
+        st.text_area("Live Transcription", value=st.session_state.transcription_text, height=300)
 
         with st.sidebar:
             if authenticator.logout('Logout', 'main'):
                 st.session_state.clear()
                 st.write("You have logged out successfully!")
                 st.stop()
-    
+
     else:
         st.write(f"Welcome {st.session_state['name']}!")
         authenticator.logout('Logout', 'main')
