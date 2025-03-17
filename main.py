@@ -1,7 +1,7 @@
 from fastapi import FastAPI, BackgroundTasks
 import asyncio
 import queue
-import numpy as np
+import uvicorn
 from amazon_transcribe.client import TranscribeStreamingClient
 from amazon_transcribe.handlers import TranscriptResultStreamHandler
 from amazon_transcribe.model import TranscriptEvent
@@ -91,6 +91,10 @@ async def basic_transcribe():
         await stream.input_stream.end_stream()
 
 @app.post("/transcribe/start")
-def start_transcription(background_tasks: BackgroundTasks):
-    background_tasks.add_task(asyncio.run, basic_transcribe())
+async def start_transcription(background_tasks: BackgroundTasks):
+    background_tasks.add_task(basic_transcribe)  # ✅ CORRECT WAY TO RUN ASYNC TASK
     return {"message": "Transcription started"}
+
+# ✅ Ensure FastAPI runs on Render's required port
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=10000)
