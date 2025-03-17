@@ -4,11 +4,12 @@ import asyncio
 import json
 import streamlit as st
 import streamlit_authenticator as stauth
-from threading import Thread
 import yaml
 from yaml.loader import SafeLoader
 from dotenv import load_dotenv
 from pinecone import Pinecone
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+from main import basic_transcribe  # Import real-time transcription function
 
 load_dotenv()
 
@@ -142,68 +143,22 @@ if st.session_state.get("authentication_status"):
 
     elif st.session_state["name"] == 'yk':
         st.title("Welcome to Yharn Transcribe 🎙️")
+        st.write("Click 'Start' to begin real-time transcription.")
 
-        text_area = st.empty()
-        text_area.write("Click 'Start' to begin transcription.")  # Initial instructions
+        RTC_CONFIGURATION = RTCConfiguration(
+            {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+        )
 
-        from main import basic_transcribe  # Import transcription function
+        webrtc_ctx = webrtc_streamer(
+            key="audio-only",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration=RTC_CONFIGURATION,
+            media_stream_constraints={"video": False, "audio": True},
+        )
 
-        # JavaScript for real-time microphone input
-        js_audio_script = """
-            <script>
-            let mediaRecorder;
-            let audioChunks = [];
-            let recording = false;
-
-            function startRecording() {
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(stream => {
-                        mediaRecorder = new MediaRecorder(stream);
-                        mediaRecorder.start();
-                        recording = true;
-
-                        mediaRecorder.ondataavailable = event => {
-                            audioChunks.push(event.data);
-                        };
-
-                        mediaRecorder.onstop = () => {
-                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                            const reader = new FileReader();
-                            reader.readAsDataURL(audioBlob);
-                            reader.onloadend = () => {
-                                const base64Audio = reader.result.split(',')[1];
-                                console.log('Audio Captured:', base64Audio);
-                            };
-                            audioChunks = [];
-                        };
-                    })
-                    .catch(error => console.error('Error accessing microphone:', error));
-            }
-
-            function stopRecording() {
-                if (mediaRecorder && recording) {
-                    mediaRecorder.stop();
-                    recording = false;
-                }
-            }
-            </script>
-        """
-
-        # Display JavaScript in Streamlit
-        st.components.v1.html(js_audio_script, height=0)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("▶ Start Transcription"):
-                st.write("🟢 Transcription started!")
-                asyncio.run(basic_transcribe())# Run transcription in the background
-                
-                st.components.v1.html("<script>startRecording();</script>", height=0)
-
-        with col2:
-            if st.button("⏹ Stop Transcription"):
-                st.write("🛑 Transcription stopped.")
-                st.components.v1.html("<script>stopRecording();</script>", height=0)
+        if webrtc_ctx.audio_receiver:
+            st.write("🟢 Transcription started!")
+            asyncio.run(basic_transcribe())  # Run transcription in real-time
 
         with st.sidebar:
             if authenticator.logout('Logout', 'main'):
