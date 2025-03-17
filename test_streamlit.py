@@ -186,62 +186,62 @@ if st.session_state.get("authentication_status"):
                 st.stop()
     # YK user - Transcription interface
      elif st.session_state["name"] == 'yk':
-        st.title("Welcome to Yharn Transcribe 🎙️")
-        st.sidebar.title(f"Welcome, {name}")
-        
-        # Initialize transcription state
-        if "transcription_text" not in st.session_state:
-            st.session_state.transcription_text = ""
-        
-        if "transcribing" not in st.session_state:
-            st.session_state.transcribing = False
-        
-        # Audio recorder component
-        st.write("Use the controls below to record audio:")
-        audio_recorder()
-        
-        # Manual transcription controls
-        st.write("Or control transcription manually:")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("Start Transcription"):
-                if start_transcription():
+                st.title("Welcome to Yharn Transcribe 🎙️")
+                st.sidebar.title(f"Welcome, {name}")
+                
+                # Initialize transcription state
+                if "transcription_text" not in st.session_state:
                     st.session_state.transcription_text = ""
-                    st.session_state.transcribing = True
-                    # Start transcription in a background thread
-                    thread = threading.Thread(target=transcription_loop, daemon=True)
-                    thread.start()
-                    st.success("Transcription started!")
-        
-        with col2:
-            if st.button("Stop Transcription"):
-                if stop_transcription():
+                
+                if "transcribing" not in st.session_state:
                     st.session_state.transcribing = False
-                    st.success("Transcription stopped!")
-        
-        # Live transcription display
-        st.subheader("Live Transcription")
-        transcription_container = st.empty()
-        
-        # Use a placeholder to update the transcription text
-        with transcription_container.container():
-            st.text_area(
-                "Transcribed Text",
-                value=st.session_state.transcription_text,
-                height=300,
-                key="transcription_display"
-            )
-        
-        # Display transcription status
-        status_text = "🔴 Not Recording" if not st.session_state.transcribing else "🟢 Recording"
-        st.sidebar.markdown(f"**Status:** {status_text}")
-        
-        # Logout button
-        with st.sidebar:
-            if authenticator.logout('Logout', 'sidebar'):
-                st.session_state.clear()
-                st.experimental_rerun()
+                
+                # Audio recorder component
+                st.write("Use the controls below to record audio:")
+                audio_recorder()
+                
+                # Manual transcription controls
+                st.write("Or control transcription manually:")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("Start Transcription"):
+                        if start_transcription():
+                            st.session_state.transcription_text = ""
+                            st.session_state.transcribing = True
+                            # Start transcription in a background thread
+                            thread = threading.Thread(target=transcription_loop, daemon=True)
+                            thread.start()
+                            st.success("Transcription started!")
+                
+                with col2:
+                    if st.button("Stop Transcription"):
+                        if stop_transcription():
+                            st.session_state.transcribing = False
+                            st.success("Transcription stopped!")
+                
+                # Live transcription display
+                st.subheader("Live Transcription")
+                transcription_container = st.empty()
+                
+                # Use a placeholder to update the transcription text
+                with transcription_container.container():
+                    st.text_area(
+                        "Transcribed Text",
+                        value=st.session_state.transcription_text,
+                        height=300,
+                        key="transcription_display"
+                    )
+                
+                # Display transcription status
+                status_text = "🔴 Not Recording" if not st.session_state.transcribing else "🟢 Recording"
+                st.sidebar.markdown(f"**Status:** {status_text}")
+                
+                # Logout button
+                with st.sidebar:
+                    if authenticator.logout('Logout', 'sidebar'):
+                        st.session_state.clear()
+                        st.experimental_rerun()
     
     # Other authenticated users
     else:
