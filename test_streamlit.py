@@ -244,20 +244,14 @@ if st.session_state.get("authentication_status"):
                     st.experimental_rerun()
     
     # Other authenticated users
-    else:
-        st.title(f"Welcome, {name}!")
-        st.write("You don't have access to special features.")
-        
-        # Logout button
-        with st.sidebar:
-            if authenticator.logout('Logout', 'sidebar'):
-                st.session_state.clear()
-                st.experimental_rerun()
+    
 
 # Authentication failed
-elif authentication_status is False:
-    st.error('Username/password is incorrect')
+    else:
+        st.write(f"Welcome {st.session_state['name']}!")
+        authenticator.logout('Logout', 'main')
 
-# Not yet authenticated
-else:
+elif st.session_state.get("authentication_status") is False:
+    st.error('Username/password is incorrect')
+elif st.session_state.get("authentication_status") is None:
     st.warning('Please enter your username and password')
