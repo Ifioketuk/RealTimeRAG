@@ -196,7 +196,7 @@ if st.session_state.get("authentication_status"):
     # YK user - Transcription interface
     elif st.session_state["name"] == 'yk':
             st.title("Welcome to Yharn Transcribe 🎙️")
-            st.sidebar.title(f"Welcome, ")
+            st.sidebar.title(f"Welcome, Yinka 😝 ")
             
             
             
