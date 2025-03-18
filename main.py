@@ -46,19 +46,27 @@ class MyEventHandler(TranscriptResultStreamHandler):
     async def handle_transcript_event(self, transcript_event: TranscriptEvent):
         global current_transcription
         results = transcript_event.transcript.results
+        print(f"Received transcript event with {len(results)} results")
+        
         for result in results:
             for alt in result.alternatives:
                 new_text = alt.transcript
                 
                 if new_text.startswith(self.last_transcript):
                     new_text = new_text[len(self.last_transcript):].strip()
+                
+                print(f"Processing transcription: '{new_text}'")
                 new_words = new_text.split()
+                
                 if new_words:
                     self.current_words.extend(new_words)
                     self.last_transcript = alt.transcript
                     # Update the current transcription for the get endpoint
                     current_transcription = new_text
+                    print(f"Updated current_transcription to: '{current_transcription}'")
+                
                 if len(self.current_words) >= self.chunk_size:
+                    print(f"Chunk size reached ({len(self.current_words)} words). Storing chunk...")
                     await self.store_chunk()
                     
     async def store_chunk(self):
@@ -82,8 +90,9 @@ class MyEventHandler(TranscriptResultStreamHandler):
         async with self.upsert_sem:
             try:
                 await async_update_db(chunk)
+                print(f"✅ Successfully upserted chunk: '{chunk[:50]}...' ({len(chunk)} chars)")
             except Exception as e:
-                print(f"Failed to upsert: {str(e)}")
+                print(f"❌ Failed to upsert: {str(e)}")
 
 async def write_chunks(stream):
     global transcription_active
@@ -150,6 +159,7 @@ async def stop_transcription():
 async def get_transcription():
     global current_transcription
     response = {"transcription": current_transcription}
+    print(f"Returning transcription: '{current_transcription}'")
     current_transcription = ""  # Reset after reading
     return JSONResponse(content=response)
 
