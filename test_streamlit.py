@@ -36,6 +36,12 @@ if 'fastapi_url' not in st.session_state:
 # Initialize transcription lock if not exists
 if 'transcription_lock' not in st.session_state:
     st.session_state.transcription_lock = threading.Lock()
+# Initialize transcription state
+if 'transcribing' not in st.session_state:
+    st.session_state.transcribing = False
+
+if 'transcription_text' not in st.session_state:
+    st.session_state.transcription_text = ""
 
 # Create session and clients
 bedrock = boto3.client(service_name='bedrock-runtime', region_name="us-east-1")
@@ -63,12 +69,15 @@ def get_transcription():
     return ""
 
 def transcription_loop():
-    while st.session_state.transcribing:
-        text = get_transcription()
-        if text:
-            with st.session_state.transcription_lock:
-                st.session_state.transcription_text += text + " "
-        time.sleep(0.5)  # Check every half second
+    try:
+        while st.session_state.get("transcribing", False):
+            text = get_transcription()
+            if text:
+                with st.session_state.transcription_lock:
+                    st.session_state.transcription_text += text + " "
+            time.sleep(0.5)
+    except Exception as e:
+        print(f"Error in transcription loop: {str(e)}")
 
 def create_embedding(text):
     try:
@@ -187,14 +196,9 @@ if st.session_state.get("authentication_status"):
     # YK user - Transcription interface
     elif st.session_state["name"] == 'yk':
             st.title("Welcome to Yharn Transcribe 🎙️")
-            st.sidebar.title(f"Welcome,Yinka 😝 ")
+            st.sidebar.title(f"Welcome, ")
             
-            # Initialize transcription state
-            if "transcription_text" not in st.session_state:
-                st.session_state.transcription_text = ""
             
-            if "transcribing" not in st.session_state:
-                st.session_state.transcribing = False
             
             # Audio recorder component
             st.write("Use the controls below to record audio:")
