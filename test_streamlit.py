@@ -27,7 +27,7 @@ modelId = os.getenv("MODEL_ID")
 emb_modelId = os.getenv("EMB_MODEL_ID")
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 index_name = os.getenv("PINECONE_INDEX_NAME")
-fastapi_url = os.getenv("FASTAPI_URL", "https://realtimerag-cjqs.onrender.com")
+fastapi_url = os.getenv("FASTAPI_URL", "https://realtimerag-1.onrender.com")
 
 # Store FastAPI URL in session state for the audio recorder component
 if 'fastapi_url' not in st.session_state:
